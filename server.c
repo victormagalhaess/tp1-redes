@@ -1,5 +1,6 @@
 // Server side C/C++ program to demonstrate Socket
 // programming
+#include "common.h"
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,9 +16,10 @@ int main(int argc, char const *argv[])
     int addrlen = sizeof(address);
     char buffer[1024] = {0};
     char *hello = "Hello from server";
+    int domain = getDomainByIPVersion(strdup(argv[1]));
 
     // Creating socket file descriptor
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    if ((server_fd = socket(domain, SOCK_STREAM, 0)) == 0)
     {
         perror("socket failed");
         exit(EXIT_FAILURE);
@@ -31,7 +33,7 @@ int main(int argc, char const *argv[])
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
-    address.sin_family = AF_INET;
+    address.sin_family = domain;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
 
