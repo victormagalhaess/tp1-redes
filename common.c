@@ -1,5 +1,6 @@
 #include <sys/socket.h>
 #include <string.h>
+#include <stdio.h>
 #include "common.h"
 
 #define V4 "v4"
@@ -7,12 +8,11 @@
 
 int getDomainByIPVersion(char *version)
 {
-
-    if (strcmp(version, V4))
+    if (strcmp(version, V4) == 0)
     {
         return AF_INET;
     }
-    else if (strcmp(version, V6))
+    else if (strcmp(version, V6) == 0)
     {
         return AF_INET6;
     }
