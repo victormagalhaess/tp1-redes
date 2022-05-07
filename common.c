@@ -18,3 +18,17 @@ int getDomainByIPVersion(char *version)
     }
     return 0;
 }
+
+void dieWithMessage(char *message)
+{
+    printf("%s\n", message);
+    exit(-1);
+}
+
+void validateInputArgs(int argc)
+{
+    if (argc != 3)
+    {
+        dieWithMessage("Invalid args number");
+    }
+}

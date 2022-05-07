@@ -11,12 +11,9 @@
 
 int main(int argc, char const *argv[])
 {
-    if (argc != 3)
-    {
-        return -1;
-    }
-    int server_fd, new_socket;
+    validateInputArgs(argc);
 
+    int server_fd, new_socket;
     int opt = 1;
 
     struct sockaddr_in address;
@@ -27,21 +24,16 @@ int main(int argc, char const *argv[])
     int domain = getDomainByIPVersion(strdup(argv[1]));
     int port = atoi(argv[2]);
 
-    // Creating socket file descriptor
     if ((server_fd = socket(domain, SOCK_STREAM, IPPROTO_TCP)) < 0)
     {
-        perror("socket failed");
-        exit(EXIT_FAILURE);
+        dieWithMessage("socket failed");
     }
 
-    // Forcefully attaching socket to the port 8080
-    if (setsockopt(server_fd, SOL_SOCKET,
-                   SO_REUSEADDR | SO_REUSEPORT, &opt,
-                   sizeof(opt)))
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
     {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
+        dieWithMessage("setsockopt failed");
     }
+
     address.sin_family = domain;
     address.sin_addr.s_addr = htonl(INADDR_ANY);
     address.sin_port = htons(port);
@@ -58,25 +50,28 @@ int main(int argc, char const *argv[])
         conSize = sizeof(addressv6);
     }
 
-    // Forcefully attaching socket to the port 8080
     if (bind(server_fd, conAddress, conSize) < 0)
     {
-        perror("bind failed");
-        exit(EXIT_FAILURE);
+        dieWithMessage("bind failed");
     }
+
     if (listen(server_fd, MAX_PENDING) < 0)
     {
-        perror("listen");
-        exit(EXIT_FAILURE);
+        dieWithMessage("listen failed");
     }
-    if ((new_socket = accept(server_fd, conAddress, (socklen_t *)&conSize)) < 0)
+
+    for (;;)
     {
-        perror("accept");
-        exit(EXIT_FAILURE);
+        if ((new_socket = accept(server_fd, conAddress, (socklen_t *)&conSize)) < 0)
+        {
+            dieWithMessage("accept failed");
+        }
+
+        int valread = read(new_socket, buffer, 1024);
+        printf("%s\n", buffer);
+        send(new_socket, hello, strlen(hello), 0);
+        printf("Hello message sent\n");
     }
-    int valread = read(new_socket, buffer, 1024);
-    printf("%s\n", buffer);
-    send(new_socket, hello, strlen(hello), 0);
-    printf("Hello message sent\n");
+
     return 0;
 }

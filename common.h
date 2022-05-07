@@ -2,5 +2,7 @@
 #define COMMON_NET_TP1
 
 int getDomainByIPVersion(char *version);
+void dieWithMessage(char *message);
+void validateInputArgs(int argc);
 
 #endif

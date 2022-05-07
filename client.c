@@ -9,10 +9,7 @@
 
 int main(int argc, char const *argv[])
 {
-    if (argc != 3)
-    {
-        return -1;
-    }
+    validateInputArgs(argc);
 
     int sock = 0;
 
@@ -27,8 +24,7 @@ int main(int argc, char const *argv[])
 
     if ((sock = socket(domain, SOCK_STREAM, IPPROTO_TCP)) < 0)
     {
-        printf("\n Socket creation error \n");
-        return -1;
+        dieWithMessage("Socket creation error\n");
     }
 
     serv_addr.sin_family = domain;
@@ -37,20 +33,14 @@ int main(int argc, char const *argv[])
     serv_addrv6.sin6_family = domain;
     serv_addrv6.sin6_port = htons(port);
 
-    // Convert IPv4 and IPv6 addresses from text to binary
-    // form
     if (inet_pton(domain, "127.0.0.1", &serv_addr.sin_addr) <= 0 && domain == AF_INET)
     {
-        printf(
-            "\nInvalid IPV4 address/ Address not supported \n");
-        return -1;
+        dieWithMessage("Invalid IPV4 address/ Address not supported \n");
     }
 
     if (inet_pton(domain, "::1", &serv_addrv6.sin6_addr) <= 0 && domain == AF_INET6)
     {
-        printf(
-            "\nInvalid IPV6 address/ Address not supported \n");
-        return -1;
+        dieWithMessage("Invalid IPV6 address/ Address not supported \n");
     }
 
     struct sockaddr *conAddress = (struct sockaddr *)&serv_addr;
@@ -63,9 +53,9 @@ int main(int argc, char const *argv[])
 
     if (connect(sock, conAddress, conSize) < 0)
     {
-        printf("\nConnection Failed \n");
-        return -1;
+        dieWithMessage("Connection Failed \n");
     }
+
     send(sock, hello, strlen(hello), 0);
     printf("Hello message sent\n");
     int valread = read(sock, buffer, 1024);
