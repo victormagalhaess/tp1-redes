@@ -1,6 +1,6 @@
-CC=gcc # compilador, troque para gcc se preferir utilizar C
-CFLAGS=-Wall -Wextra -g # compiler flags, troque o que quiser, exceto bibliotecas externas
-EXEC_CLIENT=./client # nome do executavel que sera gerado, nao troque
+CC=gcc 
+CFLAGS=-Wall -Wextra -g 
+EXEC_CLIENT=./client 
 EXEC_SERVER=./server
 
 all: $(EXEC_CLIENT) $(EXEC_SERVER)
@@ -14,5 +14,5 @@ $(EXEC_SERVER): server.c common.o
 common.o: common.c
 	$(CC) $(CFLAGS) -c common.c -o common.o
 
-
-
+clean:
+	rm -rf *.o server client
