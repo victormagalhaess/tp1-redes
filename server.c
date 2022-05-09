@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #define MAX_PENDING 5
+#define BUFFER_SIZE_BYTES 500
 
 int main(int argc, char const *argv[])
 {
@@ -19,7 +20,7 @@ int main(int argc, char const *argv[])
     struct sockaddr_in address;
     struct sockaddr_in6 addressv6;
 
-    char buffer[1024] = {0};
+    char buffer[BUFFER_SIZE_BYTES] = {0};
     char *hello = "Hello from server";
     int domain = getDomainByIPVersion(strdup(argv[1]));
     int port = atoi(argv[2]);
@@ -67,7 +68,7 @@ int main(int argc, char const *argv[])
             dieWithMessage("accept failed");
         }
 
-        int valread = read(new_socket, buffer, 1024);
+        int valread = read(new_socket, buffer, BUFFER_SIZE_BYTES);
         printf("%s\n", buffer);
         send(new_socket, hello, strlen(hello), 0);
         printf("Hello message sent\n");
