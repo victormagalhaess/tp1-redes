@@ -1,6 +1,7 @@
 #include <sys/socket.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "common.h"
 
 #define V4 "v4"
@@ -31,4 +32,17 @@ void validateInputArgs(int argc)
     {
         dieWithMessage("Invalid args number");
     }
+}
+
+void validateCommunication(int valread)
+{
+    if (valread < 0)
+    {
+        dieWithMessage("Error during communication");
+    }
+}
+
+int getPort(char *port)
+{
+    return atoi(port);
 }

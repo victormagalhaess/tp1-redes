@@ -23,7 +23,7 @@ int main(int argc, char const *argv[])
     char buffer[BUFFER_SIZE_BYTES] = {0};
     char *hello = "Hello from server";
     int domain = getDomainByIPVersion(strdup(argv[1]));
-    int port = atoi(argv[2]);
+    int port = getPort(strdup(argv[2]));
 
     if ((server_fd = socket(domain, SOCK_STREAM, IPPROTO_TCP)) < 0)
     {
@@ -60,7 +60,6 @@ int main(int argc, char const *argv[])
     {
         dieWithMessage("listen failed");
     }
-
     for (;;)
     {
         if ((new_socket = accept(server_fd, conAddress, (socklen_t *)&conSize)) < 0)
@@ -69,6 +68,7 @@ int main(int argc, char const *argv[])
         }
 
         int valread = read(new_socket, buffer, BUFFER_SIZE_BYTES);
+        validateCommunication(valread);
         printf("%s\n", buffer);
         send(new_socket, hello, strlen(hello), 0);
         printf("Hello message sent\n");

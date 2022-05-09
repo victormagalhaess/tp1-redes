@@ -8,6 +8,14 @@
 #include <unistd.h>
 #define BUFFER_SIZE_BYTES 500
 
+void readMessage(char *message)
+{
+    printf("to aqui\n");
+    fflush(stdin);
+    scanf("%499[^\n]", message);
+    return;
+}
+
 int main(int argc, char const *argv[])
 {
     validateInputArgs(argc);
@@ -18,7 +26,6 @@ int main(int argc, char const *argv[])
     struct sockaddr_in serv_addr;
     struct sockaddr_in6 serv_addrv6;
 
-    char *hello = "Hello from client";
     char buffer[BUFFER_SIZE_BYTES] = {0};
 
     if (inet_pton(AF_INET, argv[1], &serv_addr.sin_addr) > 0)
@@ -31,7 +38,7 @@ int main(int argc, char const *argv[])
         domain = AF_INET6;
     }
 
-    int port = atoi(argv[2]);
+    int port = getPort(strdup(argv[2]));
 
     if ((sock = socket(domain, SOCK_STREAM, IPPROTO_TCP)) < 0)
     {
@@ -56,10 +63,16 @@ int main(int argc, char const *argv[])
     {
         dieWithMessage("Connection Failed \n");
     }
-
-    send(sock, hello, strlen(hello), 0);
-    printf("Hello message sent\n");
-    int valread = read(sock, buffer, BUFFER_SIZE_BYTES);
-    printf("%s\n", buffer);
-    return 0;
+    char message[BUFFER_SIZE_BYTES];
+    for (;;)
+    {
+        printf("readMessage");
+        readMessage(message);
+        send(sock, message, strlen(message), 0);
+        printf("Hello message sent\n");
+        int valread = read(sock, buffer, BUFFER_SIZE_BYTES);
+        validateCommunication(valread);
+        printf("%s\n", buffer);
+    }
+    return 0; // never reached
 }
