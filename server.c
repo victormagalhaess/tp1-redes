@@ -1,5 +1,4 @@
-// Server side C/C++ program to demonstrate Socket
-// programming
+
 #include "common.h"
 #include <netinet/in.h>
 #include <stdio.h>
@@ -10,26 +9,25 @@
 #define MAX_PENDING 5
 #define BUFFER_SIZE_BYTES 500
 
-int main(int argc, char const *argv[])
+int buildServerSocket(int argc, char const *argv[])
 {
     validateInputArgs(argc);
 
-    int server_fd, new_socket;
+    int serverFd, sock;
     int opt = 1;
 
     struct sockaddr_in address;
     struct sockaddr_in6 addressv6;
 
-    char buffer[BUFFER_SIZE_BYTES] = {0};
     int domain = getDomainByIPVersion(strdup(argv[1]));
     int port = getPort(strdup(argv[2]));
 
-    if ((server_fd = socket(domain, SOCK_STREAM, IPPROTO_TCP)) < 0)
+    if ((serverFd = socket(domain, SOCK_STREAM, IPPROTO_TCP)) < 0)
     {
         dieWithMessage("socket failed");
     }
 
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
+    if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
     {
         dieWithMessage("setsockopt failed");
     }
@@ -50,25 +48,37 @@ int main(int argc, char const *argv[])
         conSize = sizeof(addressv6);
     }
 
-    if (bind(server_fd, conAddress, conSize) < 0)
+    if (bind(serverFd, conAddress, conSize) < 0)
     {
         dieWithMessage("bind failed");
     }
 
-    if (listen(server_fd, MAX_PENDING) < 0)
+    if (listen(serverFd, MAX_PENDING) < 0)
     {
         dieWithMessage("listen failed");
     }
-    if ((new_socket = accept(server_fd, conAddress, (socklen_t *)&conSize)) < 0)
+    if ((sock = accept(serverFd, conAddress, (socklen_t *)&conSize)) < 0)
     {
         dieWithMessage("accept failed");
     }
+
+    return sock;
+}
+
+int main(int argc, char const *argv[])
+{
+    int sock = buildServerSocket(argc, argv);
+    char buffer[BUFFER_SIZE_BYTES] = {0};
+
     for (;;)
     {
-        int valread = read(new_socket, buffer, BUFFER_SIZE_BYTES);
+        memset(buffer, 0, sizeof(buffer));
+        int valread = read(sock, buffer, BUFFER_SIZE_BYTES);
         validateCommunication(valread);
         printf("%s\n", buffer);
-        //        send(new_socket, hello, strlen(hello), 0);
+        int valsent = send(sock, buffer, strlen(buffer), 0);
+        validateCommunication(valsent);
+        printf("Sent %d bytes successfuly\n", valsent);
     }
 
     return 0;

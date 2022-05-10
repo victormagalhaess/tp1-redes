@@ -12,21 +12,16 @@ void readMessage(char *message)
 {
     fflush(stdin);
     scanf("%s", message);
-    printf("%s\n", message);
     return;
 }
 
-int main(int argc, char const *argv[])
+int buildClientSocket(int argc, char const *argv[])
 {
     validateInputArgs(argc);
-
     int sock = 0;
     int domain;
-
     struct sockaddr_in serv_addr;
     struct sockaddr_in6 serv_addrv6;
-
-    char buffer[BUFFER_SIZE_BYTES] = {0};
 
     if (inet_pton(AF_INET, argv[1], &serv_addr.sin_addr) > 0)
     {
@@ -63,13 +58,25 @@ int main(int argc, char const *argv[])
     {
         dieWithMessage("Connection Failed \n");
     }
+
+    return sock;
+}
+
+int main(int argc, char const *argv[])
+{
+    int sock = buildClientSocket(argc, argv);
+    char buffer[BUFFER_SIZE_BYTES] = {0};
+
     char message[BUFFER_SIZE_BYTES];
     for (;;)
     {
         readMessage(message);
         int valsent = send(sock, message, strlen(message), 0);
         validateCommunication(valsent);
-        printf("Message sent with code %d\n", valsent);
+        printf("Sent %d bytes successfuly\n", valsent);
+        memset(buffer, 0, sizeof(buffer));
+        int valread = read(sock, buffer, BUFFER_SIZE_BYTES);
+        validateCommunication(valread);
         printf("%s\n", buffer);
     }
     return 0; // never reached
