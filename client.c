@@ -10,9 +10,9 @@
 
 void readMessage(char *message)
 {
-    printf("to aqui\n");
     fflush(stdin);
-    scanf("%499[^\n]", message);
+    scanf("%s", message);
+    printf("%s\n", message);
     return;
 }
 
@@ -66,12 +66,10 @@ int main(int argc, char const *argv[])
     char message[BUFFER_SIZE_BYTES];
     for (;;)
     {
-        printf("readMessage");
         readMessage(message);
-        send(sock, message, strlen(message), 0);
-        printf("Hello message sent\n");
-        int valread = read(sock, buffer, BUFFER_SIZE_BYTES);
-        validateCommunication(valread);
+        int valsent = send(sock, message, strlen(message), 0);
+        validateCommunication(valsent);
+        printf("Message sent with code %d\n", valsent);
         printf("%s\n", buffer);
     }
     return 0; // never reached

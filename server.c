@@ -21,7 +21,6 @@ int main(int argc, char const *argv[])
     struct sockaddr_in6 addressv6;
 
     char buffer[BUFFER_SIZE_BYTES] = {0};
-    char *hello = "Hello from server";
     int domain = getDomainByIPVersion(strdup(argv[1]));
     int port = getPort(strdup(argv[2]));
 
@@ -60,18 +59,16 @@ int main(int argc, char const *argv[])
     {
         dieWithMessage("listen failed");
     }
+    if ((new_socket = accept(server_fd, conAddress, (socklen_t *)&conSize)) < 0)
+    {
+        dieWithMessage("accept failed");
+    }
     for (;;)
     {
-        if ((new_socket = accept(server_fd, conAddress, (socklen_t *)&conSize)) < 0)
-        {
-            dieWithMessage("accept failed");
-        }
-
         int valread = read(new_socket, buffer, BUFFER_SIZE_BYTES);
         validateCommunication(valread);
         printf("%s\n", buffer);
-        send(new_socket, hello, strlen(hello), 0);
-        printf("Hello message sent\n");
+        //        send(new_socket, hello, strlen(hello), 0);
     }
 
     return 0;
