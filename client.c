@@ -66,8 +66,8 @@ int main(int argc, char const *argv[])
 {
     int sock = buildClientSocket(argc, argv);
     char buffer[BUFFER_SIZE_BYTES] = {0};
-
     char message[BUFFER_SIZE_BYTES];
+
     for (;;)
     {
         readMessage(message);

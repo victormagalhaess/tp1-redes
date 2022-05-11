@@ -8,6 +8,11 @@
 #include <unistd.h>
 #define MAX_PENDING 5
 #define BUFFER_SIZE_BYTES 500
+#define LIST 0
+#define ADD 1
+#define REMOVE 2
+#define READ 3
+#define INVALID -1
 
 int buildServerSocket(int argc, char const *argv[])
 {
@@ -65,21 +70,96 @@ int buildServerSocket(int argc, char const *argv[])
     return sock;
 }
 
+int parseCommand(char *fullCommand)
+{
+    char *command = strtok(fullCommand, " ");
+    if (strcmp(command, "list") == 0)
+    {
+        return LIST;
+    }
+    else if (strcmp(command, "add") == 0)
+    {
+        return ADD;
+    }
+    else if (strcmp(command, "remove") == 0)
+    {
+        return REMOVE;
+    }
+    else if (strcmp(command, "read") == 0)
+    {
+        return READ;
+    }
+
+    return INVALID;
+}
+
+void listSensors(int sensors[], char *sensorsInEquipment)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        if (sensors[i])
+        {
+            char sensorID[4];
+            sprintf(sensorID, "0%d ", i + 1);
+            printf("%s\n", sensorID);
+            strcat(sensorsInEquipment, sensorID);
+        }
+    }
+}
+
+void addSensors() {}
+
+void removeSensors() {}
+
+void readFromSensors() {}
+
 int main(int argc, char const *argv[])
 {
     int sock = buildServerSocket(argc, argv);
     char buffer[BUFFER_SIZE_BYTES] = {0};
+    char message[BUFFER_SIZE_BYTES] = "";
+    char auxBuffer[BUFFER_SIZE_BYTES] = "";
+
+    struct Equipment equipments[4] = {
+        [0] = {.Id = 0, .Sensors = {0}},
+        [1] = {.Id = 1, .Sensors = {0}},
+        [2] = {.Id = 2, .Sensors = {0}},
+        [3] = {.Id = 3, .Sensors = {0}},
+    };
 
     for (;;)
     {
         memset(buffer, 0, sizeof(buffer));
+        memset(message, 0, sizeof(message));
+        memset(auxBuffer, 0, sizeof(auxBuffer));
+
         int valread = read(sock, buffer, BUFFER_SIZE_BYTES);
         validateCommunication(valread);
         printf("%s\n", buffer);
-        int valsent = send(sock, buffer, strlen(buffer), 0);
+        strcpy(auxBuffer, buffer);
+        int commandType = parseCommand(auxBuffer);
+
+        switch (commandType)
+        {
+        case LIST:
+            listSensors(equipments[0].Sensors, message);
+            break;
+        case ADD:
+            addSensors();
+            break;
+        case REMOVE:
+            removeSensors();
+            break;
+        case READ:
+            readFromSensors();
+            break;
+        default:
+            break;
+        }
+
+        int valsent = send(sock, message, strlen(message), 0);
         validateCommunication(valsent);
         printf("Sent %d bytes successfuly\n", valsent);
     }
-
     return 0;
 }

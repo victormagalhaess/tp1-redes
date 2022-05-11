@@ -34,9 +34,9 @@ void validateInputArgs(int argc)
     }
 }
 
-void validateCommunication(int valread)
+void validateCommunication(int status)
 {
-    if (valread < 0)
+    if (status < 0)
     {
         dieWithMessage("Error during communication");
     }
