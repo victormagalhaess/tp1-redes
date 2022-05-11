@@ -107,7 +107,29 @@ void listSensors(int sensors[], char *sensorsInEquipment)
     }
 }
 
-void addSensors() {}
+void addSensors(struct Equipment *equipments, char *fullCommand)
+{
+    printf("ADD\n\n");
+    int sensorsToAdd[4] = {0};
+    char *partOfCommand;
+    printf("%s\n", fullCommand);
+    while (strcmp(partOfCommand, "in") != 0)
+    {
+        partOfCommand = strtok(fullCommand, " ");
+        int sensor = atoi(partOfCommand);
+        sensorsToAdd[sensor] = 1;
+    }
+    char *equipment = strtok(fullCommand, " ");
+    int equipmentId = atoi(equipment);
+    for (int i = 0; i < 4; i++)
+    {
+        if (sensorsToAdd[i])
+        {
+            equipments[equipmentId].Sensors[i] = 1;
+            printf("%d %d\n", equipmentId, i);
+        }
+    }
+}
 
 void removeSensors() {}
 
@@ -138,6 +160,7 @@ int main(int argc, char const *argv[])
         printf("%s\n", buffer);
         strcpy(auxBuffer, buffer);
         int commandType = parseCommand(auxBuffer);
+        printf("%s\n", auxBuffer);
 
         switch (commandType)
         {
@@ -145,7 +168,7 @@ int main(int argc, char const *argv[])
             listSensors(equipments[0].Sensors, message);
             break;
         case ADD:
-            addSensors();
+            addSensors(equipments, auxBuffer);
             break;
         case REMOVE:
             removeSensors();
