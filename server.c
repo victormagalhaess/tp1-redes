@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #define MAX_PENDING 5
+#define MAX_SENSORS 15
 #define BUFFER_SIZE_BYTES 500
 
 #define LIST 0
@@ -121,9 +122,13 @@ void listSensors(struct Equipment *equipments, char *fullCommand, char *sensorsI
     }
 }
 
-void changeSensors(struct Equipment *equipments, char *fullCommand, int newState, char *sensorOperationFeedback)
+int changeSensors(struct Equipment *equipments, char *fullCommand, int newState, char *sensorOperationFeedback, int installedSensors)
 {
-    int sensorsToAdd[4] = {0};
+    int sensorsToChange[4] = {0};
+
+    char *operationFeedback = "";
+    char *limitFeedback = "";
+    char *alreadyAppliedFeedback = "";
 
     // this double call of strtok was made to remove the "COMMAND sensor" from the command to be executed
     char *partOfCommand = strtok(fullCommand, " ");
@@ -140,41 +145,58 @@ void changeSensors(struct Equipment *equipments, char *fullCommand, int newState
         int sensor = atoi(partOfCommand) - 1;
         if (sensor >= 0 && sensor <= 3)
         {
-            sensorsToAdd[sensor] = 1;
+            sensorsToChange[sensor] = 1;
         }
         printf(" %s\n", partOfCommand);
     }
 
-    int equipmentToAdd = atoi(partOfCommand) - 1;
-    if (equipmentToAdd >= 0 && equipmentToAdd <= 3)
+    int equipmentToChange = atoi(partOfCommand) - 1;
+    if (equipmentToChange >= 0 && equipmentToChange <= 3)
     {
         for (int i = 0; i < 4; i++)
         {
-            if (sensorsToAdd[i])
+            if (sensorsToChange[i])
             {
-                equipments[equipmentToAdd].Sensors[i] = newState;
-                char sensorID[4];
-                sprintf(sensorID, "0%d ", i + 1);
-                printf("%s\n", sensorID);
-                strcat(sensorOperationFeedback, sensorID);
+                if (newState)
+                {
+                    if (installedSensors < MAX_SENSORS)
+                    {
+                        installedSensors += 1;
+                        equipments[equipmentToChange].Sensors[i] = newState;
+                        char sensorID[4];
+                        sprintf(sensorID, "0%d ", i + 1);
+                        printf("%s\n", sensorID);
+                        strcat(sensorOperationFeedback, sensorID);
+                    }
+                    else
+                    {
+                    }
+                }
+                else
+                {
+                    installedSensors -= 1;
+                    equipments[equipmentToChange].Sensors[i] = newState;
+                    char sensorID[4];
+                    sprintf(sensorID, "0%d ", i + 1);
+                    printf("%s\n", sensorID);
+                    strcat(sensorOperationFeedback, sensorID);
+                }
             }
         }
     }
-    return;
+    return installedSensors;
 }
 
-void addSensors(struct Equipment *equipments, char *fullCommand, char *sensorAddFeedback)
+int addSensors(struct Equipment *equipments, char *fullCommand, char *sensorAddFeedback, int installedSensors)
 {
     int sensorStateOn = 1;
-    changeSensors(equipments, fullCommand, sensorStateOn, sensorAddFeedback);
-    strcat(sensorAddFeedback, "added");
+    return changeSensors(equipments, fullCommand, sensorStateOn, sensorAddFeedback, installedSensors);
 }
 
-void removeSensors(struct Equipment *equipments, char *fullCommand, char *sensorRemoveFeedback)
+int removeSensors(struct Equipment *equipments, char *fullCommand, char *sensorRemoveFeedback, int installedSensors)
 {
     int sensorStateOff = 0;
-    changeSensors(equipments, fullCommand, sensorStateOff, sensorRemoveFeedback);
-    strcat(sensorRemoveFeedback, "removed");
+    return changeSensors(equipments, fullCommand, sensorStateOff, sensorRemoveFeedback, installedSensors);
 }
 
 void readFromSensors() {}
@@ -187,6 +209,7 @@ void die()
 int main(int argc, char const *argv[])
 {
     int sock = buildServerSocket(argc, argv);
+    int installedSensors = 0;
     char buffer[BUFFER_SIZE_BYTES] = {0};
     char message[BUFFER_SIZE_BYTES] = "";
     char mainCommand[BUFFER_SIZE_BYTES] = "";
@@ -220,10 +243,10 @@ int main(int argc, char const *argv[])
             listSensors(equipments, fullCommand, message);
             break;
         case ADD:
-            addSensors(equipments, fullCommand, message);
+            installedSensors = addSensors(equipments, fullCommand, message, installedSensors);
             break;
         case REMOVE:
-            removeSensors(equipments, fullCommand, message);
+            installedSensors = removeSensors(equipments, fullCommand, message, installedSensors);
             break;
         case READ:
             readFromSensors();
