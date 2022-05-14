@@ -8,10 +8,12 @@
 #include <unistd.h>
 #define MAX_PENDING 5
 #define BUFFER_SIZE_BYTES 500
+
 #define LIST 0
 #define ADD 1
 #define REMOVE 2
 #define READ 3
+#define KILL 4
 #define INVALID -1
 
 int buildServerSocket(int argc, char const *argv[])
@@ -89,15 +91,27 @@ int parseCommand(char *fullCommand)
     {
         return READ;
     }
+    else if (strcmp(command, "kill") == 0)
+    {
+        return KILL;
+    }
 
     return INVALID;
 }
 
-void listSensors(int sensors[], char *sensorsInEquipment)
+void listSensors(struct Equipment *equipments, char *fullCommand, char *sensorsInEquipment)
 {
+    // this call of strtok was made to remove the "COMMAND sensor" from the command to be executed
+    char *partOfCommand = strtok(fullCommand, " ");
+    for (int i = 0; i < 3; i++)
+    {
+        partOfCommand = strtok(NULL, " ");
+    }
+
+    int equipmentToCheck = atoi(partOfCommand) - 1;
     for (int i = 0; i < 4; i++)
     {
-        if (sensors[i])
+        if (equipments[equipmentToCheck].Sensors[i])
         {
             char sensorID[4];
             sprintf(sensorID, "0%d ", i + 1);
@@ -107,40 +121,68 @@ void listSensors(int sensors[], char *sensorsInEquipment)
     }
 }
 
-void addSensors(struct Equipment *equipments, char *fullCommand)
+void changeSensors(struct Equipment *equipments, char *fullCommand, int newState)
 {
-    printf("ADD\n\n");
     int sensorsToAdd[4] = {0};
-    char *partOfCommand;
-    printf("%s\n", fullCommand);
-    while (strcmp(partOfCommand, "in") != 0)
+
+    // this double call of strtok was made to remove the "COMMAND sensor" from the command to be executed
+    char *partOfCommand = strtok(fullCommand, " ");
+    partOfCommand = strtok(NULL, " ");
+
+    while (partOfCommand != NULL)
     {
-        partOfCommand = strtok(fullCommand, " ");
-        int sensor = atoi(partOfCommand);
-        sensorsToAdd[sensor] = 1;
-    }
-    char *equipment = strtok(fullCommand, " ");
-    int equipmentId = atoi(equipment);
-    for (int i = 0; i < 4; i++)
-    {
-        if (sensorsToAdd[i])
+        partOfCommand = strtok(NULL, " ");
+        if (strcmp(partOfCommand, "in") == 0)
         {
-            equipments[equipmentId].Sensors[i] = 1;
-            printf("%d %d\n", equipmentId, i);
+            partOfCommand = strtok(NULL, " ");
+            break;
+        }
+        int sensor = atoi(partOfCommand) - 1;
+        if (sensor >= 0 && sensor <= 3)
+        {
+            sensorsToAdd[sensor] = 1;
+        }
+        printf(" %s\n", partOfCommand);
+    }
+
+    int equipmentToAdd = atoi(partOfCommand) - 1;
+    if (equipmentToAdd >= 0 && equipmentToAdd <= 3)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            if (sensorsToAdd[i])
+                equipments[equipmentToAdd].Sensors[i] = newState;
         }
     }
+    return;
 }
 
-void removeSensors() {}
+void addSensors(struct Equipment *equipments, char *fullCommand)
+{
+    int sensorStateOn = 1;
+    changeSensors(equipments, fullCommand, sensorStateOn);
+}
+
+void removeSensors(struct Equipment *equipments, char *fullCommand)
+{
+    int sensorStateOff = 0;
+    changeSensors(equipments, fullCommand, sensorStateOff);
+}
 
 void readFromSensors() {}
+
+void die()
+{
+    exit(-1);
+}
 
 int main(int argc, char const *argv[])
 {
     int sock = buildServerSocket(argc, argv);
     char buffer[BUFFER_SIZE_BYTES] = {0};
     char message[BUFFER_SIZE_BYTES] = "";
-    char auxBuffer[BUFFER_SIZE_BYTES] = "";
+    char mainCommand[BUFFER_SIZE_BYTES] = "";
+    char fullCommand[BUFFER_SIZE_BYTES] = "";
 
     struct Equipment equipments[4] = {
         [0] = {.Id = 0, .Sensors = {0}},
@@ -153,29 +195,34 @@ int main(int argc, char const *argv[])
     {
         memset(buffer, 0, sizeof(buffer));
         memset(message, 0, sizeof(message));
-        memset(auxBuffer, 0, sizeof(auxBuffer));
+        memset(mainCommand, 0, sizeof(mainCommand));
 
         int valread = read(sock, buffer, BUFFER_SIZE_BYTES);
+        strcpy(message, "teste");
         validateCommunication(valread);
         printf("%s\n", buffer);
-        strcpy(auxBuffer, buffer);
-        int commandType = parseCommand(auxBuffer);
-        printf("%s\n", auxBuffer);
+        strcpy(mainCommand, buffer);
+        strcpy(fullCommand, buffer);
+        printf("THIS IS AUXBUFFER: %s\n", mainCommand);
+        int commandType = parseCommand(mainCommand);
+        printf("%s\n", mainCommand);
 
         switch (commandType)
         {
         case LIST:
-            listSensors(equipments[0].Sensors, message);
+            listSensors(equipments, fullCommand, message);
             break;
         case ADD:
-            addSensors(equipments, auxBuffer);
+            addSensors(equipments, fullCommand);
             break;
         case REMOVE:
-            removeSensors();
+            removeSensors(equipments, fullCommand);
             break;
         case READ:
             readFromSensors();
             break;
+        case KILL:
+            die();
         default:
             break;
         }

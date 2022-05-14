@@ -11,7 +11,7 @@
 void readMessage(char *message)
 {
     fflush(stdin);
-    scanf("%s", message);
+    scanf("%[^\n]%*c", message);
     return;
 }
 
