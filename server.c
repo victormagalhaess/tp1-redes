@@ -121,7 +121,7 @@ void listSensors(struct Equipment *equipments, char *fullCommand, char *sensorsI
     }
 }
 
-void changeSensors(struct Equipment *equipments, char *fullCommand, int newState)
+void changeSensors(struct Equipment *equipments, char *fullCommand, int newState, char *sensorOperationFeedback)
 {
     int sensorsToAdd[4] = {0};
 
@@ -151,22 +151,30 @@ void changeSensors(struct Equipment *equipments, char *fullCommand, int newState
         for (int i = 0; i < 4; i++)
         {
             if (sensorsToAdd[i])
+            {
                 equipments[equipmentToAdd].Sensors[i] = newState;
+                char sensorID[4];
+                sprintf(sensorID, "0%d ", i + 1);
+                printf("%s\n", sensorID);
+                strcat(sensorOperationFeedback, sensorID);
+            }
         }
     }
     return;
 }
 
-void addSensors(struct Equipment *equipments, char *fullCommand)
+void addSensors(struct Equipment *equipments, char *fullCommand, char *sensorAddFeedback)
 {
     int sensorStateOn = 1;
-    changeSensors(equipments, fullCommand, sensorStateOn);
+    changeSensors(equipments, fullCommand, sensorStateOn, sensorAddFeedback);
+    strcat(sensorAddFeedback, "added");
 }
 
-void removeSensors(struct Equipment *equipments, char *fullCommand)
+void removeSensors(struct Equipment *equipments, char *fullCommand, char *sensorRemoveFeedback)
 {
     int sensorStateOff = 0;
-    changeSensors(equipments, fullCommand, sensorStateOff);
+    changeSensors(equipments, fullCommand, sensorStateOff, sensorRemoveFeedback);
+    strcat(sensorRemoveFeedback, "removed");
 }
 
 void readFromSensors() {}
@@ -198,7 +206,6 @@ int main(int argc, char const *argv[])
         memset(mainCommand, 0, sizeof(mainCommand));
 
         int valread = read(sock, buffer, BUFFER_SIZE_BYTES);
-        strcpy(message, "teste");
         validateCommunication(valread);
         printf("%s\n", buffer);
         strcpy(mainCommand, buffer);
@@ -213,10 +220,10 @@ int main(int argc, char const *argv[])
             listSensors(equipments, fullCommand, message);
             break;
         case ADD:
-            addSensors(equipments, fullCommand);
+            addSensors(equipments, fullCommand, message);
             break;
         case REMOVE:
-            removeSensors(equipments, fullCommand);
+            removeSensors(equipments, fullCommand, message);
             break;
         case READ:
             readFromSensors();
