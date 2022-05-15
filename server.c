@@ -153,23 +153,29 @@ void formatOutput(char *sensorOperationFeedback, char *installationFeedback, cha
     char *status = newState ? "added " : "deleted ";
     char *alreadyAppliedStatus = newState ? "already exists in " : "does not exists in ";
     char equipmentId[4] = "";
+    char fullInstalationFeedback[100] = "";
+    char fullAlreadyAppliedFeedback[100] = "";
     formatElement(equipment, equipmentId);
 
     if (strcmp(installationFeedback, "") != 0)
     {
+        strcpy(fullInstalationFeedback, "sensor ");
         strcat(installationFeedback, status);
+        strcat(fullInstalationFeedback, installationFeedback);
     }
 
     if (strcmp(alreadyAppliedFeedback, "") != 0)
     {
+        strcpy(fullAlreadyAppliedFeedback, "sensor ");
         strcat(alreadyAppliedFeedback, alreadyAppliedStatus);
         strcat(alreadyAppliedFeedback, equipmentId);
+        strcat(fullAlreadyAppliedFeedback, alreadyAppliedFeedback);
     }
 
-    sprintf(sensorOperationFeedback, "%s%s%s", installationFeedback, limitFeedback, alreadyAppliedFeedback);
+    sprintf(sensorOperationFeedback, "%s%s%s", fullInstalationFeedback, limitFeedback, fullAlreadyAppliedFeedback);
 }
 
-int parseInput(char *fullCommand, int *sensorsToProcess)
+int parseInput(char *fullCommand, int *sensorsToProcess, int *allValidSensors)
 {
     // this double call of strtok was made to remove the "COMMAND sensor" from the command to be executed
     // the command "read" is a bit different and does not count with the "sensor" keyword, so we do not need to
@@ -191,6 +197,10 @@ int parseInput(char *fullCommand, int *sensorsToProcess)
         {
             sensorsToProcess[sensor] = 1;
         }
+        else
+        {
+            *allValidSensors = 0;
+        }
     }
 
     return atoi(partOfCommand) - 1;
@@ -201,36 +211,43 @@ int changeSensors(struct Equipment *equipments, char *fullCommand, int newState,
     char installationFeedback[50] = "";
     char limitFeedback[15] = "";
     char alreadyAppliedFeedback[50] = "";
+
+    int allValidSensors = 1;
     int sensorsToChange[4] = {0};
-    int equipmentToChange = parseInput(fullCommand, sensorsToChange);
+    int equipmentToChange = parseInput(fullCommand, sensorsToChange, &allValidSensors);
+    int valueToChange = newState ? 1 : -1;
 
     if (equipmentToChange >= 0 && equipmentToChange <= 3)
     {
-        for (int i = 0; i < 4; i++)
+        if (allValidSensors)
         {
-            if (sensorsToChange[i])
+            for (int i = 0; i < 4; i++)
             {
-                if (newState)
+                if (sensorsToChange[i])
                 {
-                    if (installedSensors < MAX_SENSORS)
+
+                    if (installedSensors < MAX_SENSORS || !newState)
                     {
-                        installedSensors += 1;
+                        installedSensors += valueToChange;
                         changeSensor(equipments, equipmentToChange, newState, i, installationFeedback, alreadyAppliedFeedback);
                     }
-                    else
+                    else if (newState)
                     {
                         strcpy(limitFeedback, "limit exceeded");
                     }
                 }
-                else
-                {
-                    installedSensors -= 1;
-                    changeSensor(equipments, equipmentToChange, newState, i, installationFeedback, alreadyAppliedFeedback);
-                }
             }
+            formatOutput(sensorOperationFeedback, installationFeedback, limitFeedback, alreadyAppliedFeedback, newState, equipmentToChange);
+        }
+        else
+        {
+            strcpy(sensorOperationFeedback, "invalid sensor");
         }
     }
-    formatOutput(sensorOperationFeedback, installationFeedback, limitFeedback, alreadyAppliedFeedback, newState, equipmentToChange);
+    else
+    {
+        strcpy(sensorOperationFeedback, "invalid equipment");
+    }
     return installedSensors;
 }
 
@@ -255,12 +272,38 @@ void buildSensorReading(char *sensorReadings)
 
 void readFromSensors(struct Equipment *equipments, char *fullCommand, char *sensorReadFeedback)
 {
+    int allValidSensors = 1;
     int sensorsToRead[4] = {0};
-    int equipmentToRead = parseInput(fullCommand, sensorsToRead);
-    for (int i = 0; i < 4; i++)
+    int equipmentToRead = parseInput(fullCommand, sensorsToRead, &allValidSensors);
+    char invalidSensors[50] = "";
+    char invalidSensorsFeedback[100] = "";
+    if (equipmentToRead >= 0 && equipmentToRead <= 3)
     {
-        if (sensorsToRead[i])
-            buildSensorReading(sensorReadFeedback);
+        if (allValidSensors)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if (sensorsToRead[i] && equipments[equipmentToRead].Sensors[i])
+                    buildSensorReading(sensorReadFeedback);
+                else if (sensorsToRead[i])
+                    formatElement(i, invalidSensors);
+            }
+            if (strcmp(invalidSensors, "") != 0)
+            {
+                strcpy(invalidSensorsFeedback, "sensor(s) ");
+                strcat(invalidSensorsFeedback, invalidSensors);
+                strcat(invalidSensorsFeedback, "not installed");
+                strcat(sensorReadFeedback, invalidSensorsFeedback);
+            }
+        }
+        else
+        {
+            strcpy(sensorReadFeedback, "invalid sensor");
+        }
+    }
+    else
+    {
+        strcpy(sensorReadFeedback, "invalid equipment");
     }
 }
 
@@ -272,6 +315,7 @@ void die(int socket)
 
 int main(int argc, char const *argv[])
 {
+
     srand(time(0));
     int sock = buildServerSocket(argc, argv);
     int installedSensors = 0;
