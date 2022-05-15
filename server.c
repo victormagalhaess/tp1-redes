@@ -318,6 +318,7 @@ int main(int argc, char const *argv[])
 
     srand(time(0));
     int sock = buildServerSocket(argc, argv);
+    int connectionIsAlive = 1;
     int installedSensors = 0;
     char buffer[BUFFER_SIZE_BYTES] = {0};
     char message[BUFFER_SIZE_BYTES] = "";
@@ -363,11 +364,19 @@ int main(int argc, char const *argv[])
             break;
         default:
             close(sock);
+            connectionIsAlive = 0;
             break;
         }
-
-        int valsent = send(sock, message, strlen(message), 0);
-        validateCommunication(valsent);
+        if (connectionIsAlive)
+        {
+            int valsent = send(sock, message, strlen(message), 0);
+            validateCommunication(valsent);
+        }
+        else
+        {
+            sock = buildServerSocket(argc, argv);
+            connectionIsAlive = 1;
+        }
     }
     return 0;
 }
