@@ -10,12 +10,15 @@
 #define MAX_SENSORS 15
 #define BUFFER_SIZE_BYTES 500
 
-#define LIST 0
-#define ADD 1
-#define REMOVE 2
-#define READ 3
-#define KILL 4
-#define INVALID -1
+enum Commands
+{
+    LIST = 0,
+    ADD,
+    REMOVE,
+    READ,
+    KILL,
+    INVALID = -1,
+};
 
 int buildServerSocket(int argc, char const *argv[])
 {
