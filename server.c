@@ -100,6 +100,13 @@ int parseCommand(char *fullCommand)
     return INVALID;
 }
 
+void formatElement(int element, char *elementFeedback)
+{
+    char elementId[4];
+    sprintf(elementId, "0%d ", element + 1);
+    strcat(elementFeedback, elementId);
+}
+
 void listSensors(struct Equipment *equipments, char *fullCommand, char *sensorsInEquipment)
 {
     // this call of strtok was made to remove the "COMMAND sensor" from the command to be executed
@@ -114,21 +121,52 @@ void listSensors(struct Equipment *equipments, char *fullCommand, char *sensorsI
     {
         if (equipments[equipmentToCheck].Sensors[i])
         {
-            char sensorID[4];
-            sprintf(sensorID, "0%d ", i + 1);
-            printf("%s\n", sensorID);
-            strcat(sensorsInEquipment, sensorID);
+            formatElement(i, sensorsInEquipment);
         }
     }
+}
+
+void changeSensor(struct Equipment *equipments, int equipmentToChange, int newState, int sensor, char *installationFeedback, char *alreadyAppliedFeedback)
+{
+    if (equipments[equipmentToChange].Sensors[sensor] != newState)
+    {
+        equipments[equipmentToChange].Sensors[sensor] = newState;
+        formatElement(sensor, installationFeedback);
+    }
+    else
+    {
+        formatElement(sensor, alreadyAppliedFeedback);
+    }
+}
+
+void formatOutput(char *sensorOperationFeedback, char *installationFeedback, char *limitFeedback, char *alreadyAppliedFeedback, int newState, int equipment)
+{
+    char *status = newState ? "added " : "deleted ";
+    char *alreadyAppliedStatus = newState ? "already exists in " : "does not exists in ";
+    char equipmentId[4] = "";
+    formatElement(equipment, equipmentId);
+
+    if (strcmp(installationFeedback, "") != 0)
+    {
+        strcat(installationFeedback, status);
+    }
+
+    if (strcmp(alreadyAppliedFeedback, "") != 0)
+    {
+        strcat(alreadyAppliedFeedback, alreadyAppliedStatus);
+        strcat(alreadyAppliedFeedback, equipmentId);
+    }
+
+    sprintf(sensorOperationFeedback, "%s%s%s", installationFeedback, limitFeedback, alreadyAppliedFeedback);
 }
 
 int changeSensors(struct Equipment *equipments, char *fullCommand, int newState, char *sensorOperationFeedback, int installedSensors)
 {
     int sensorsToChange[4] = {0};
 
-    char *operationFeedback = "";
-    char *limitFeedback = "";
-    char *alreadyAppliedFeedback = "";
+    char installationFeedback[50] = "";
+    char limitFeedback[15] = "";
+    char alreadyAppliedFeedback[50] = "";
 
     // this double call of strtok was made to remove the "COMMAND sensor" from the command to be executed
     char *partOfCommand = strtok(fullCommand, " ");
@@ -151,6 +189,7 @@ int changeSensors(struct Equipment *equipments, char *fullCommand, int newState,
     }
 
     int equipmentToChange = atoi(partOfCommand) - 1;
+
     if (equipmentToChange >= 0 && equipmentToChange <= 3)
     {
         for (int i = 0; i < 4; i++)
@@ -162,28 +201,22 @@ int changeSensors(struct Equipment *equipments, char *fullCommand, int newState,
                     if (installedSensors < MAX_SENSORS)
                     {
                         installedSensors += 1;
-                        equipments[equipmentToChange].Sensors[i] = newState;
-                        char sensorID[4];
-                        sprintf(sensorID, "0%d ", i + 1);
-                        printf("%s\n", sensorID);
-                        strcat(sensorOperationFeedback, sensorID);
+                        changeSensor(equipments, equipmentToChange, newState, i, installationFeedback, alreadyAppliedFeedback);
                     }
                     else
                     {
+                        strcpy(limitFeedback, "limit exceeded");
                     }
                 }
                 else
                 {
                     installedSensors -= 1;
-                    equipments[equipmentToChange].Sensors[i] = newState;
-                    char sensorID[4];
-                    sprintf(sensorID, "0%d ", i + 1);
-                    printf("%s\n", sensorID);
-                    strcat(sensorOperationFeedback, sensorID);
+                    changeSensor(equipments, equipmentToChange, newState, i, installationFeedback, alreadyAppliedFeedback);
                 }
             }
         }
     }
+    formatOutput(sensorOperationFeedback, installationFeedback, limitFeedback, alreadyAppliedFeedback, newState, equipmentToChange);
     return installedSensors;
 }
 
@@ -201,8 +234,9 @@ int removeSensors(struct Equipment *equipments, char *fullCommand, char *sensorR
 
 void readFromSensors() {}
 
-void die()
+void die(int socket)
 {
+    close(socket);
     exit(-1);
 }
 
@@ -233,9 +267,7 @@ int main(int argc, char const *argv[])
         printf("%s\n", buffer);
         strcpy(mainCommand, buffer);
         strcpy(fullCommand, buffer);
-        printf("THIS IS AUXBUFFER: %s\n", mainCommand);
         int commandType = parseCommand(mainCommand);
-        printf("%s\n", mainCommand);
 
         switch (commandType)
         {
@@ -252,14 +284,15 @@ int main(int argc, char const *argv[])
             readFromSensors();
             break;
         case KILL:
-            die();
+            die(sock);
+            break;
         default:
+            close(sock);
             break;
         }
 
         int valsent = send(sock, message, strlen(message), 0);
         validateCommunication(valsent);
-        printf("Sent %d bytes successfuly\n", valsent);
     }
     return 0;
 }

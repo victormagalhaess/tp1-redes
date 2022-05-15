@@ -73,7 +73,6 @@ int main(int argc, char const *argv[])
         readMessage(message);
         int valsent = send(sock, message, strlen(message), 0);
         validateCommunication(valsent);
-        printf("Sent %d bytes successfuly\n", valsent);
         memset(buffer, 0, sizeof(buffer));
         int valread = read(sock, buffer, BUFFER_SIZE_BYTES);
         validateCommunication(valread);

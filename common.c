@@ -36,7 +36,7 @@ void validateInputArgs(int argc)
 
 void validateCommunication(int status)
 {
-    if (status < 0)
+    if (status < 1)
     {
         dieWithMessage("Error during communication");
     }
