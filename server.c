@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <time.h>
 #define MAX_PENDING 5
 #define MAX_SENSORS 15
 #define BUFFER_SIZE_BYTES 500
@@ -127,6 +128,11 @@ void listSensors(struct Equipment *equipments, char *fullCommand, char *sensorsI
             formatElement(i, sensorsInEquipment);
         }
     }
+
+    if (strcmp(sensorsInEquipment, "") == 0)
+    {
+        strcpy(sensorsInEquipment, "none");
+    }
 }
 
 void changeSensor(struct Equipment *equipments, int equipmentToChange, int newState, int sensor, char *installationFeedback, char *alreadyAppliedFeedback)
@@ -163,17 +169,14 @@ void formatOutput(char *sensorOperationFeedback, char *installationFeedback, cha
     sprintf(sensorOperationFeedback, "%s%s%s", installationFeedback, limitFeedback, alreadyAppliedFeedback);
 }
 
-int changeSensors(struct Equipment *equipments, char *fullCommand, int newState, char *sensorOperationFeedback, int installedSensors)
+int parseInput(char *fullCommand, int *sensorsToProcess)
 {
-    int sensorsToChange[4] = {0};
-
-    char installationFeedback[50] = "";
-    char limitFeedback[15] = "";
-    char alreadyAppliedFeedback[50] = "";
-
     // this double call of strtok was made to remove the "COMMAND sensor" from the command to be executed
+    // the command "read" is a bit different and does not count with the "sensor" keyword, so we do not need to
+    // remove the second token of the command
     char *partOfCommand = strtok(fullCommand, " ");
-    partOfCommand = strtok(NULL, " ");
+    if (strcmp(partOfCommand, "read") != 0)
+        partOfCommand = strtok(NULL, " ");
 
     while (partOfCommand != NULL)
     {
@@ -186,12 +189,20 @@ int changeSensors(struct Equipment *equipments, char *fullCommand, int newState,
         int sensor = atoi(partOfCommand) - 1;
         if (sensor >= 0 && sensor <= 3)
         {
-            sensorsToChange[sensor] = 1;
+            sensorsToProcess[sensor] = 1;
         }
-        printf(" %s\n", partOfCommand);
     }
 
-    int equipmentToChange = atoi(partOfCommand) - 1;
+    return atoi(partOfCommand) - 1;
+}
+
+int changeSensors(struct Equipment *equipments, char *fullCommand, int newState, char *sensorOperationFeedback, int installedSensors)
+{
+    char installationFeedback[50] = "";
+    char limitFeedback[15] = "";
+    char alreadyAppliedFeedback[50] = "";
+    int sensorsToChange[4] = {0};
+    int equipmentToChange = parseInput(fullCommand, sensorsToChange);
 
     if (equipmentToChange >= 0 && equipmentToChange <= 3)
     {
@@ -235,7 +246,23 @@ int removeSensors(struct Equipment *equipments, char *fullCommand, char *sensorR
     return changeSensors(equipments, fullCommand, sensorStateOff, sensorRemoveFeedback, installedSensors);
 }
 
-void readFromSensors() {}
+void buildSensorReading(char *sensorReadings)
+{
+    char reading[6] = "";
+    sprintf(reading, "%d.%d%d ", rand() % 9, rand() % 9, rand() % 9);
+    strcat(sensorReadings, reading);
+}
+
+void readFromSensors(struct Equipment *equipments, char *fullCommand, char *sensorReadFeedback)
+{
+    int sensorsToRead[4] = {0};
+    int equipmentToRead = parseInput(fullCommand, sensorsToRead);
+    for (int i = 0; i < 4; i++)
+    {
+        if (sensorsToRead[i])
+            buildSensorReading(sensorReadFeedback);
+    }
+}
 
 void die(int socket)
 {
@@ -245,6 +272,7 @@ void die(int socket)
 
 int main(int argc, char const *argv[])
 {
+    srand(time(0));
     int sock = buildServerSocket(argc, argv);
     int installedSensors = 0;
     char buffer[BUFFER_SIZE_BYTES] = {0};
@@ -284,7 +312,7 @@ int main(int argc, char const *argv[])
             installedSensors = removeSensors(equipments, fullCommand, message, installedSensors);
             break;
         case READ:
-            readFromSensors();
+            readFromSensors(equipments, fullCommand, message);
             break;
         case KILL:
             die(sock);
