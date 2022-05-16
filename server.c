@@ -1,5 +1,6 @@
 
 #include "common.h"
+#include "server.h"
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,19 +8,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <time.h>
-#define MAX_PENDING 5
-#define MAX_SENSORS 15
-#define BUFFER_SIZE_BYTES 500
-
-enum Commands
-{
-    LIST = 0,
-    ADD,
-    REMOVE,
-    READ,
-    KILL,
-    INVALID = -1,
-};
 
 int buildServerSocket(int argc, char const *argv[])
 {
