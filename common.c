@@ -6,6 +6,8 @@
 
 #define V4 "v4"
 #define V6 "v6"
+#define MIN_PORT_VALUE 1025
+#define MAX_PORT_VALUE 65535
 
 int getDomainByIPVersion(char *version)
 {
@@ -17,7 +19,8 @@ int getDomainByIPVersion(char *version)
     {
         return AF_INET6;
     }
-    return 0;
+    dieWithMessage("Invalid ip version. You must specify a valid ip version (v4 or v6)");
+    return -1; // never reached
 }
 
 void dieWithMessage(char *message)
@@ -42,7 +45,13 @@ void validateCommunication(int status)
     }
 }
 
-int getPort(char *port)
+int getPort(char *portString)
 {
-    return atoi(port);
+    int port = atoi(portString);
+    if (port >= MIN_PORT_VALUE && port <= MAX_PORT_VALUE)
+    {
+        return port;
+    }
+    dieWithMessage("Port in invalid range. You must use a non-root valid Unix port betwheen 1025 and 65535");
+    return -1; // never reached
 }

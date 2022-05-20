@@ -16,7 +16,6 @@ enum Commands
 
 struct Equipment
 {
-    int Id;
     int Sensors[4];
 };
 

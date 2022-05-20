@@ -9,9 +9,12 @@
 #include <unistd.h>
 #include <time.h>
 
-int buildServerSocket(int argc, char const *argv[])
+/* All the socket creation logic is segregated in the following function.
+It receives the ipVersion (expected to be v4 or v6) and the port, builds the socket
+and returns the int that represents the socket connection */
+
+int buildServerSocket(char *ipVersion, char *portString)
 {
-    validateInputArgs(argc);
 
     int serverFd, sock;
     int opt = 1;
@@ -19,8 +22,8 @@ int buildServerSocket(int argc, char const *argv[])
     struct sockaddr_in address;
     struct sockaddr_in6 addressv6;
 
-    int domain = getDomainByIPVersion(strdup(argv[1]));
-    int port = getPort(strdup(argv[2]));
+    int domain = getDomainByIPVersion(ipVersion);
+    int port = getPort(portString);
 
     if ((serverFd = socket(domain, SOCK_STREAM, IPPROTO_TCP)) < 0)
     {
@@ -65,6 +68,23 @@ int buildServerSocket(int argc, char const *argv[])
     return sock;
 }
 
+/* The functions in this section are pretty much auxiliar. They are meant to
+do auxiliar tasks as: end the socket connection and kill the server, copy strings,
+format the commands received by the client, format the output strings to be send
+to the client, etc */
+
+void closeSocketAndDie(int socket)
+{
+    close(socket);
+    dieWithMessage("Server closing...");
+}
+
+void copyCommand(char *fullCommand, char *mainCommand, char *buffer)
+{
+    strcpy(mainCommand, buffer);
+    strcpy(fullCommand, buffer);
+}
+
 int parseCommand(char *fullCommand)
 {
     char *command = strtok(fullCommand, " ");
@@ -92,12 +112,79 @@ int parseCommand(char *fullCommand)
     return INVALID;
 }
 
+int parseInput(char *fullCommand, int *sensorsToProcess, int *allValidSensors)
+{
+    // this double call of strtok was made to remove the "COMMAND sensor" from the command to be executed
+    // the command "read" is a bit different and does not count with the "sensor" keyword, so we do not need to
+    // remove the second token of the command
+    char *partOfCommand = strtok(fullCommand, " ");
+    if (strcmp(partOfCommand, "read") != 0)
+        partOfCommand = strtok(NULL, " ");
+
+    while (partOfCommand != NULL)
+    {
+        partOfCommand = strtok(NULL, " ");
+        if (strcmp(partOfCommand, "in") == 0)
+        {
+            partOfCommand = strtok(NULL, " ");
+            break;
+        }
+        int sensor = atoi(partOfCommand) - 1;
+        if (sensor >= 0 && sensor <= 3)
+        {
+            sensorsToProcess[sensor] = 1;
+        }
+        else
+        {
+            *allValidSensors = 0;
+        }
+    }
+
+    return atoi(partOfCommand) - 1;
+}
+
 void formatElement(int element, char *elementFeedback)
 {
     char elementId[4];
     sprintf(elementId, "0%d ", element + 1);
     strcat(elementFeedback, elementId);
 }
+
+void formatOutput(char *sensorOperationFeedback, char *installationFeedback, char *limitFeedback, char *alreadyAppliedFeedback, int newState, int equipment)
+{
+    char *status = newState ? "added " : "deleted ";
+    char *alreadyAppliedStatus = newState ? "already exists in " : "does not exists in ";
+    char equipmentId[4] = "";
+    char fullInstalationFeedback[100] = "";
+    char fullAlreadyAppliedFeedback[100] = "";
+    formatElement(equipment, equipmentId);
+
+    if (strcmp(installationFeedback, "") != 0)
+    {
+        strcpy(fullInstalationFeedback, "sensor ");
+        strcat(installationFeedback, status);
+        strcat(fullInstalationFeedback, installationFeedback);
+    }
+
+    if (strcmp(alreadyAppliedFeedback, "") != 0)
+    {
+        strcpy(fullAlreadyAppliedFeedback, "sensor ");
+        strcat(alreadyAppliedFeedback, alreadyAppliedStatus);
+        strcat(alreadyAppliedFeedback, equipmentId);
+        strcat(fullAlreadyAppliedFeedback, alreadyAppliedFeedback);
+    }
+
+    sprintf(sensorOperationFeedback, "%s%s%s", fullInstalationFeedback, limitFeedback, fullAlreadyAppliedFeedback);
+}
+
+/*This section is meant to operate on the commands. It covers the commands that operates over the sensors and
+equipments and a few auxiliar functions. They go as Follow:
+ChangeSensors: A abstraction of the operation of "Changing a sensor state" it is actually not a command, but is used by
+the add and remove commands.
+AddSensors: Calls the ChangeSensors function with the instalation objective, takes in account the limit of sensors and increases it
+RemoveSensors: Calls the ChangeSensors function with the removal objective, does not really care about the limit, but decreases it
+ListSensors: List the sensors installed in the required equipment
+ReadSensors: Read the required sensors in the required equipment, builds a fake reading using 3 random integers to build a fake decimal*/
 
 void listSensors(struct Equipment *equipments, char *fullCommand, char *sensorsInEquipment)
 {
@@ -134,64 +221,6 @@ void changeSensor(struct Equipment *equipments, int equipmentToChange, int newSt
     {
         formatElement(sensor, alreadyAppliedFeedback);
     }
-}
-
-void formatOutput(char *sensorOperationFeedback, char *installationFeedback, char *limitFeedback, char *alreadyAppliedFeedback, int newState, int equipment)
-{
-    char *status = newState ? "added " : "deleted ";
-    char *alreadyAppliedStatus = newState ? "already exists in " : "does not exists in ";
-    char equipmentId[4] = "";
-    char fullInstalationFeedback[100] = "";
-    char fullAlreadyAppliedFeedback[100] = "";
-    formatElement(equipment, equipmentId);
-
-    if (strcmp(installationFeedback, "") != 0)
-    {
-        strcpy(fullInstalationFeedback, "sensor ");
-        strcat(installationFeedback, status);
-        strcat(fullInstalationFeedback, installationFeedback);
-    }
-
-    if (strcmp(alreadyAppliedFeedback, "") != 0)
-    {
-        strcpy(fullAlreadyAppliedFeedback, "sensor ");
-        strcat(alreadyAppliedFeedback, alreadyAppliedStatus);
-        strcat(alreadyAppliedFeedback, equipmentId);
-        strcat(fullAlreadyAppliedFeedback, alreadyAppliedFeedback);
-    }
-
-    sprintf(sensorOperationFeedback, "%s%s%s", fullInstalationFeedback, limitFeedback, fullAlreadyAppliedFeedback);
-}
-
-int parseInput(char *fullCommand, int *sensorsToProcess, int *allValidSensors)
-{
-    // this double call of strtok was made to remove the "COMMAND sensor" from the command to be executed
-    // the command "read" is a bit different and does not count with the "sensor" keyword, so we do not need to
-    // remove the second token of the command
-    char *partOfCommand = strtok(fullCommand, " ");
-    if (strcmp(partOfCommand, "read") != 0)
-        partOfCommand = strtok(NULL, " ");
-
-    while (partOfCommand != NULL)
-    {
-        partOfCommand = strtok(NULL, " ");
-        if (strcmp(partOfCommand, "in") == 0)
-        {
-            partOfCommand = strtok(NULL, " ");
-            break;
-        }
-        int sensor = atoi(partOfCommand) - 1;
-        if (sensor >= 0 && sensor <= 3)
-        {
-            sensorsToProcess[sensor] = 1;
-        }
-        else
-        {
-            *allValidSensors = 0;
-        }
-    }
-
-    return atoi(partOfCommand) - 1;
 }
 
 int changeSensors(struct Equipment *equipments, char *fullCommand, int newState, char *sensorOperationFeedback, int installedSensors)
@@ -254,7 +283,7 @@ int removeSensors(struct Equipment *equipments, char *fullCommand, char *sensorR
 void buildSensorReading(char *sensorReadings)
 {
     char reading[6] = "";
-    sprintf(reading, "%d.%d%d ", rand() % 9, rand() % 9, rand() % 9);
+    sprintf(reading, "%d.%d%d ", rand() % 9, rand() % 9, rand() % 9); // nice little trick to fake a random decimal number
     strcat(sensorReadings, reading);
 }
 
@@ -295,29 +324,30 @@ void readFromSensors(struct Equipment *equipments, char *fullCommand, char *sens
     }
 }
 
-void die(int socket)
-{
-    close(socket);
-    exit(-1);
-}
+/*The last section covers the main function that is responsible to start the server, initialize variables, and start the
+reading loop, where the server enters in a state that it waits the client to send a message and execute the valid
+commands that it receives.*/
 
 int main(int argc, char const *argv[])
 {
-
+    char *ipVersion = strdup(argv[1]);
+    char *port = strdup(argv[2]);
+    validateInputArgs(argc);
     srand(time(0));
-    int sock = buildServerSocket(argc, argv);
+    int sock = buildServerSocket(ipVersion, port);
     int connectionIsAlive = 1;
     int installedSensors = 0;
-    char buffer[BUFFER_SIZE_BYTES] = {0};
+
+    char buffer[BUFFER_SIZE_BYTES] = "";
     char message[BUFFER_SIZE_BYTES] = "";
     char mainCommand[BUFFER_SIZE_BYTES] = "";
     char fullCommand[BUFFER_SIZE_BYTES] = "";
 
     struct Equipment equipments[4] = {
-        [0] = {.Id = 0, .Sensors = {0}},
-        [1] = {.Id = 1, .Sensors = {0}},
-        [2] = {.Id = 2, .Sensors = {0}},
-        [3] = {.Id = 3, .Sensors = {0}},
+        [0] = {.Sensors = {0}},
+        [1] = {.Sensors = {0}},
+        [2] = {.Sensors = {0}},
+        [3] = {.Sensors = {0}},
     };
 
     for (;;)
@@ -326,11 +356,10 @@ int main(int argc, char const *argv[])
         memset(message, 0, sizeof(message));
         memset(mainCommand, 0, sizeof(mainCommand));
 
-        int valread = read(sock, buffer, BUFFER_SIZE_BYTES);
-        validateCommunication(valread);
+        int totalBytesRead = read(sock, buffer, BUFFER_SIZE_BYTES);
+        validateCommunication(totalBytesRead);
         printf("%s\n", buffer);
-        strcpy(mainCommand, buffer);
-        strcpy(fullCommand, buffer);
+        copyCommand(fullCommand, mainCommand, buffer);
         int commandType = parseCommand(mainCommand);
 
         switch (commandType)
@@ -348,7 +377,7 @@ int main(int argc, char const *argv[])
             readFromSensors(equipments, fullCommand, message);
             break;
         case KILL:
-            die(sock);
+            closeSocketAndDie(sock);
             break;
         default:
             close(sock);
@@ -362,7 +391,7 @@ int main(int argc, char const *argv[])
         }
         else
         {
-            sock = buildServerSocket(argc, argv);
+            sock = buildServerSocket(ipVersion, port);
             connectionIsAlive = 1;
         }
     }

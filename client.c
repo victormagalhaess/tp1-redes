@@ -6,7 +6,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#define BUFFER_SIZE_BYTES 500
+
+/* This section is responsible to just read the commands from the console.*/
 
 void readMessage(char *message)
 {
@@ -14,6 +15,10 @@ void readMessage(char *message)
     scanf("%[^\n]%*c", message);
     return;
 }
+
+/* All the socket creation logic is segregated in the following function.
+It receives the ip of the server (expected to be an valid ipv4 or ipv6) and the port,
+builds the socket and returns the int that represents the socket connection */
 
 int buildClientSocket(int argc, char const *argv[])
 {
@@ -62,6 +67,11 @@ int buildClientSocket(int argc, char const *argv[])
     return sock;
 }
 
+/*The last section covers the main function that is responsible to connect to the server,
+nitialize variables, and start the reading loop, where the client enters in a state that it waits the terminal inputs to
+send them as a message to the server. Then it awaits the server to and execute the validcommands that it receives and
+to return an feedback.*/
+
 int main(int argc, char const *argv[])
 {
     int sock = buildClientSocket(argc, argv);
@@ -71,11 +81,11 @@ int main(int argc, char const *argv[])
     for (;;)
     {
         readMessage(message);
-        int valsent = send(sock, message, strlen(message), 0);
-        validateCommunication(valsent);
+        int totalBytesSent = send(sock, message, strlen(message), 0);
+        validateCommunication(totalBytesSent);
         memset(buffer, 0, sizeof(buffer));
-        int valread = read(sock, buffer, BUFFER_SIZE_BYTES);
-        validateCommunication(valread);
+        int totalBytesRead = read(sock, buffer, BUFFER_SIZE_BYTES);
+        validateCommunication(totalBytesRead);
         printf("%s\n", buffer);
     }
     return 0; // never reached
