@@ -152,7 +152,7 @@ void formatElement(int element, char *elementFeedback)
 
 void formatOutput(char *sensorOperationFeedback, char *installationFeedback, char *limitFeedback, char *alreadyAppliedFeedback, int newState, int equipment)
 {
-    char *status = newState ? "added " : "deleted ";
+    char *status = newState ? "added " : "removed ";
     char *alreadyAppliedStatus = newState ? "already exists in " : "does not exists in ";
     char equipmentId[4] = "";
     char fullInstalationFeedback[100] = "";
@@ -307,7 +307,10 @@ void readFromSensors(struct Equipment *equipments, char *fullCommand, char *sens
             }
             if (strcmp(invalidSensors, "") != 0)
             {
-                strcpy(invalidSensorsFeedback, "sensor(s) ");
+                if (strcmp(sensorReadFeedback, "") != 0)
+                {
+                    strcat(invalidSensorsFeedback, "and ");
+                }
                 strcat(invalidSensorsFeedback, invalidSensors);
                 strcat(invalidSensorsFeedback, "not installed");
                 strcat(sensorReadFeedback, invalidSensorsFeedback);
